@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qtomo"
+version = "0.2.0"
+description = "Quantum process tomography via universal compilation (Kraus / unitary models)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "tensorflow>=2.18",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.7"]
+test = ["pytest>=7", "matplotlib>=3.7"]
+notebook = ["matplotlib>=3.7", "ipykernel>=6", "nbclient>=0.10", "nbformat>=5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Put src/ first on sys.path so tests run against this checkout even without `pip install -e .`
+pythonpath = ["src"]
+addopts = "-q"
+filterwarnings = [
+    # Silently dropping an imaginary part usually hides a bug: fail loudly instead.
+    "error::numpy.exceptions.ComplexWarning",
+]
+markers = [
+    "slow: end-to-end training tests (deselect with -m 'not slow')",
+]
+
+[tool.ruff]
+line-length = 110
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]

@@ -1,0 +1,10 @@
+# Khớp với [project.dependencies] và extra [test, notebook] trong pyproject.toml.
+# Cách khác tương đương: pip install -e ".[test,notebook]"
+numpy>=1.26
+scipy>=1.11
+tensorflow>=2.18
+matplotlib>=3.7
+pytest>=7
+ipykernel>=6
+nbclient>=0.10
+nbformat>=5

@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ipynb_checkpoints/
+results/
+output/
+
+# Package lời giải đầy đủ và test riêng của nó — chỉ giảng viên giữ, không commit ở nhánh nào.
+src/qtomo/
+tests/test_tomography.py
+
+# Cấu hình trợ lý AI / ghi chú nội bộ của giảng viên — không phát cho sinh viên.
+.claude/
+CLAUDE.md
+AGENTS.md
+SETUP.md
