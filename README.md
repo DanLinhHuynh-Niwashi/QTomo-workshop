@@ -33,6 +33,10 @@ cd workshop
 
 Bạn làm bài trên nhánh **`main`** (mặc định). Nhánh `solution` chứa đáp án — xem [mục 5](#5-đáp-án).
 
+> Tải bằng **Download ZIP** thay vì `git clone` cũng làm bài được (thư mục sẽ tên `QTomo-workshop-main`
+> thay vì `workshop` — trong README cứ hiểu `workshop/` là thư mục đó). Khi đó không có Git nên các lệnh
+> ở mục 5 không chạy; muốn xem đáp án thì tải thêm ZIP của nhánh `solution`.
+
 ### 1.3. Môi trường ảo và thư viện
 
 ```bash
@@ -78,16 +82,33 @@ Kiểm tra `python` đúng là của môi trường ảo:
 python -c "import sys; print(sys.prefix)"
 ```
 
-Đường dẫn in ra phải kết thúc bằng `workshop/.venv` (hoặc `workshop\.venv`).
+Đường dẫn in ra phải là thư mục `.venv` **bên trong thư mục dự án** (ví dụ `...\workshop\.venv`).
+Nếu ra đường dẫn của Python hệ thống (ví dụ `C:\Users\...\Python311`) thì bạn chưa kích hoạt `.venv`.
 
-### 1.5. Lỗi thường gặp
+### 1.5. Chọn kernel khi chạy notebook bằng nút bấm (VS Code)
+
+Bấm **Select Kernel** (góc trên bên phải notebook) → **Python Environments** → chọn môi trường **`.venv`**
+của thư mục dự án. Đừng chọn *Jupyter Kernel… → Python 3 (ipykernel)*: nếu máy đã từng cài Jupyter cho
+Python hệ thống, mục đó có thể là kernel của Python hệ thống chứ không phải `.venv`.
+
+Kiểm tra nhanh bằng một ô trong notebook: `import sys; print(sys.executable)` phải in ra đường dẫn
+trong `.venv`.
+
+Dùng Jupyter Lab / Notebook trên trình duyệt hoặc chạy notebook từ terminal (`jupyter execute`, mục 3):
+luôn **kích hoạt `.venv` trước** rồi mới gõ lệnh `jupyter …`. Gọi thẳng `.venv\Scripts\jupyter` mà
+không kích hoạt vẫn có thể chạy nhầm Python / Jupyter của hệ thống.
+
+### 1.6. Lỗi thường gặp
 
 | Lỗi | Cách xử lý |
 |---|---|
 | PowerShell chặn `Activate.ps1` | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` rồi kích hoạt lại |
 | `ModuleNotFoundError: No module named 'qtomo_skeleton'` | Chưa kích hoạt `.venv`, hoặc chưa `pip install -e .` |
+| `ModuleNotFoundError: No module named 'tensorflow'` khi chạy `pytest` | Chưa kích hoạt `.venv` nên đang dùng Python hệ thống: kích hoạt rồi chạy lại `python -m pytest` |
+| Notebook báo `ImportError: numpy.core.umath failed to import` | Notebook đang chạy bằng kernel của Python hệ thống: chọn lại kernel `.venv` theo mục 1.5 (terminal: kích hoạt `.venv` trước khi gõ `jupyter …`) |
+| `jupyter execute` in `Unrecognized alias: 'inplace'` và notebook không được ghi lại | Đang gọi `jupyter-execute` cũ của hệ thống: kích hoạt `.venv` rồi chạy lại |
 | `AttributeError: _ARRAY_API not found` khi import TensorFlow | Đang dùng Python hệ thống thay vì `.venv` — thường do đã **di chuyển / đổi tên thư mục** sau khi tạo `.venv`. Xoá `.venv` và tạo lại |
-| Notebook báo `ModuleNotFoundError` dù terminal chạy được | Kernel của notebook không phải `.venv`: chạy lại lệnh `ipykernel install` ở 1.3 và chọn kernel đó |
+| Notebook báo `ModuleNotFoundError` dù terminal chạy được | Kernel của notebook không phải `.venv`: chọn lại kernel theo mục 1.5; nếu không thấy `.venv` trong danh sách thì kích hoạt `.venv` và chạy lại lệnh `ipykernel install` ở 1.3 |
 | `UnicodeDecodeError` khi chạy `jupyter execute` trên Windows | Đặt `PYTHONUTF8=1` trước (PowerShell: `$env:PYTHONUTF8 = "1"`) |
 | `InvalidArgumentError: Input matrix is not invertible` | Đừng train bằng trạng thái thuần *chính xác* như $\lvert 0\rangle\langle 0\rvert$; dùng trạng thái Haar (mặc định) |
 
@@ -129,7 +150,8 @@ TODO trong `experiment_run_packed.ipynb` (bước ③).
 
 ## 3. Quy trình thực hành
 
-Mở notebook trong VS Code / Jupyter từ thư mục `workshop/`, chọn kernel `.venv`, rồi *Restart & Run All*.
+Mở notebook trong VS Code / Jupyter từ thư mục `workshop/`, chọn kernel `.venv` (xem [mục 1.5](#15-chọn-kernel-khi-chạy-notebook-bằng-nút-bấm-vs-code)),
+rồi *Restart & Run All*.
 
 ### Bước ① — Đọc và chạy `experiment_run.ipynb` (thí nghiệm "unpack")
 
@@ -192,7 +214,7 @@ python -m pytest
 
 (~1–2 phút, gồm cả test chạy notebook.) Khi bước ② xong, không còn test nào SKIPPED vì TODO.
 
-Chạy notebook không cần giao diện (từ `workshop/`, đã kích hoạt `.venv`; Windows nhớ `PYTHONUTF8=1`):
+Chạy notebook không cần giao diện (từ `workshop/`, **đã kích hoạt `.venv`** — xem mục 1.5; Windows nhớ `PYTHONUTF8=1`):
 
 ```bash
 jupyter execute --inplace experiment_run_packed.ipynb
