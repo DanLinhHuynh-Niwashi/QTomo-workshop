@@ -200,7 +200,7 @@ Cùng thí nghiệm, cùng hình, nhưng viết bằng `KrausTomography` của b
 | P4 | `Evaluation.from_model(...)`, `TomographyResult.from_model(...)` | `[B9]` |
 | P5 | hàm `run_packed(...)` cho một run | `run_unpacked(...)` |
 
-Phần quét + lưu (`ExperimentWriter`) và Phần 3 (đọc lại, vẽ Fig. 2, Fig. 3) đã cho sẵn. Mỗi TODO có một ô
+Phần quét + lưu (`TomographyResult.to_npz`) và Phần 3 (đọc lại, vẽ Fig. 2, Fig. 3) đã cho sẵn. Mỗi TODO có một ô
 **kiểm tra** ngay sau; chạy qua được thì làm tiếp. Với cùng seed, kết quả phải **trùng** bản unpack ở bước ①.
 Ô đầu tiên báo lỗi rõ ràng nếu `tomography.py` chưa làm xong.
 

@@ -8,16 +8,7 @@ from conftest import kraus_tomography_class, skip_if_not_implemented
 
 from qtomo_skeleton import generator, quantum_ops
 from qtomo_skeleton.optimizer import AdamOptimizer
-from qtomo_skeleton.writer import (
-    Evaluation,
-    ExperimentWriter,
-    TomographyResult,
-    get_value,
-    group_by,
-    load_result,
-    load_results,
-    save_result,
-)
+from qtomo_skeleton.writer import Evaluation, TomographyResult, get_value, group_by
 
 # Nhánh solution: lớp trong file đáp án; nhánh main: lớp của sinh viên (skip nếu chưa làm xong).
 KrausTomography = kraus_tomography_class()
@@ -115,10 +106,10 @@ def test_get_value_and_group_by(kraus_model, single_kraus_model):
 
 def test_round_trip(tmp_path, kraus_model, evaluation):
     original = TomographyResult.from_model(kraus_model, evaluation, gamma=np.float64(0.2), seed=0)
-    path = save_result(tmp_path / "run", original)
+    path = original.to_npz(tmp_path / "run")
     assert path.suffix == ".npz"
 
-    loaded = load_result(path)
+    loaded = TomographyResult.from_npz(path)
     assert loaded.model == original.model
     assert loaded.num_qubits == original.num_qubits
     assert loaded.fit_seconds == pytest.approx(original.fit_seconds)
@@ -130,7 +121,7 @@ def test_round_trip(tmp_path, kraus_model, evaluation):
 
 
 def test_file_opens_with_plain_numpy(tmp_path, single_kraus_model):
-    path = save_result(tmp_path / "run.npz", TomographyResult.from_model(single_kraus_model, gamma=0.3))
+    path = TomographyResult.from_model(single_kraus_model, gamma=0.3).to_npz(tmp_path / "run.npz")
     with np.load(path) as data:  # allow_pickle defaults to False
         assert str(data["model"]) == "kraus"
         assert data["loss_history"].shape == (4,)
@@ -141,41 +132,26 @@ def test_file_opens_with_plain_numpy(tmp_path, single_kraus_model):
 
 def test_save_refuses_to_overwrite(tmp_path, single_kraus_model):
     result = TomographyResult.from_model(single_kraus_model)
-    save_result(tmp_path / "run", result)
+    result.to_npz(tmp_path / "run")
     with pytest.raises(FileExistsError):
-        save_result(tmp_path / "run", result)
-    save_result(tmp_path / "run", result, overwrite=True)
+        result.to_npz(tmp_path / "run")
+    result.to_npz(tmp_path / "run", overwrite=True)
 
 
 def test_metadata_must_be_json_serializable(tmp_path, single_kraus_model):
     result = TomographyResult.from_model(single_kraus_model, bad=object())
     with pytest.raises(TypeError):
-        save_result(tmp_path / "run", result)
+        result.to_npz(tmp_path / "run")
 
 
 def test_load_rejects_unknown_version(tmp_path, single_kraus_model):
-    path = save_result(tmp_path / "run", TomographyResult.from_model(single_kraus_model))
+    path = TomographyResult.from_model(single_kraus_model).to_npz(tmp_path / "run")
     with np.load(path) as data:
         arrays = dict(data)
     arrays["format_version"] = np.array(999)
     np.savez(path, **arrays)
     with pytest.raises(ValueError):
-        load_result(path)
-
-
-def test_experiment_writer(tmp_path, kraus_model, single_kraus_model):
-    writer = ExperimentWriter(tmp_path / "exp")
-    first = writer.save(TomographyResult.from_model(kraus_model, run=0))
-    second = writer.save(TomographyResult.from_model(single_kraus_model, run=1))
-    named = writer.save(TomographyResult.from_model(single_kraus_model, run=2), name="custom")
-    assert [p.name for p in (first, second, named)] == ["run_0000.npz", "run_0001.npz", "custom.npz"]
-    assert [r.metadata["run"] for r in writer.load_all()] == [2, 0, 1]  # sorted by file name
-    assert len(load_results(tmp_path / "exp", "run_*.npz")) == 2
-
-
-def test_load_results_missing_directory(tmp_path):
-    with pytest.raises(FileNotFoundError):
-        load_results(tmp_path / "nope")
+        TomographyResult.from_npz(path)
 
 
 def test_group_by_several_keys(kraus_model, single_kraus_model):

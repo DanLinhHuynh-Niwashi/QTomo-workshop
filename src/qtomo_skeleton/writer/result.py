@@ -1,10 +1,25 @@
-"""In-memory records of a tomography run."""
+"""In-memory records of a tomography run, saved / loaded as NumPy ``.npz`` files.
+
+``TomographyResult.to_npz`` writes a plain NumPy archive (no pickling), so the files
+open directly with ``np.load(path)`` in any NumPy-only environment::
+
+    data = np.load("run_0000.npz")
+    data["loss_history"], data["params"], json.loads(str(data["metadata"]))
+
+Keys: ``format_version``, ``model``, ``num_qubits``, ``loss_history``,
+``training_states``, ``initial_params``, ``params``, ``fit_seconds``, ``metadata``
+(JSON string) and, when an evaluation was recorded, ``eval_inputs``,
+``eval_outputs``, ``eval_targets``, ``eval_fidelities``.
+"""
 
 from __future__ import annotations
 
+import json
+import os
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -16,11 +31,35 @@ from qtomo_skeleton._types import ArrayLike
 if TYPE_CHECKING:  # chỉ dùng cho type hint: writer không phụ thuộc vào tomography.py (file của sinh viên)
     from qtomo_skeleton.tomography import KrausTomography
 
-__all__ = ["Evaluation", "TomographyResult", "get_value", "group_by"]
+__all__ = ["FORMAT_VERSION", "Evaluation", "TomographyResult", "get_value", "group_by"]
 
 
 def _stack_complex(matrices: Iterable[ArrayLike]) -> np.ndarray:
     return np.stack([np.asarray(m, dtype=np.complex128) for m in matrices])
+
+
+#: Version of the ``.npz`` layout written by :meth:`TomographyResult.to_npz`.
+FORMAT_VERSION = 1
+
+_EVAL_KEYS = {
+    "eval_inputs": "inputs",
+    "eval_outputs": "outputs",
+    "eval_targets": "targets",
+    "eval_fidelities": "fidelities",
+}
+
+
+def _json_default(value: Any) -> Any:
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    raise TypeError(f"Metadata value {value!r} of type {type(value).__name__} is not JSON-serializable.")
+
+
+def _with_suffix(path: str | os.PathLike[str]) -> Path:
+    path = Path(path)
+    return path if path.suffix == ".npz" else path.with_name(path.name + ".npz")
 
 
 @dataclass(frozen=True, eq=False)
@@ -121,6 +160,57 @@ class TomographyResult:
     def test_infidelity(self) -> float:
         """``1 - mean fidelity`` on the evaluation states (``nan`` if not evaluated)."""
         return self.evaluation.mean_infidelity if self.evaluation is not None else float("nan")
+
+    def to_npz(self, path: str | os.PathLike[str], *, overwrite: bool = False) -> Path:
+        """Write this result to ``path`` (``.npz`` is appended if missing). Returns the final path.
+
+        The file is a plain NumPy archive (no pickling), so it also opens with ``np.load(path)``.
+        """
+        path = _with_suffix(path)
+        if path.exists() and not overwrite:
+            raise FileExistsError(f"{path} already exists (pass overwrite=True to replace it).")
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        arrays: dict[str, np.ndarray] = {
+            "format_version": np.array(FORMAT_VERSION),
+            "model": np.array(self.model),
+            "num_qubits": np.array(self.num_qubits),
+            "loss_history": np.asarray(self.loss_history, dtype=np.float64),
+            "training_states": np.asarray(self.training_states, dtype=np.complex128),
+            "initial_params": np.asarray(self.initial_params, dtype=np.complex128),
+            "params": np.asarray(self.params, dtype=np.complex128),
+            "fit_seconds": np.array(self.fit_seconds, dtype=np.float64),
+            "metadata": np.array(json.dumps(self.metadata, default=_json_default, sort_keys=True)),
+        }
+        if self.evaluation is not None:
+            for key, attr in _EVAL_KEYS.items():
+                arrays[key] = np.asarray(getattr(self.evaluation, attr))
+
+        with path.open("wb") as fh:
+            np.savez_compressed(fh, **arrays)
+        return path
+
+    @classmethod
+    def from_npz(cls, path: str | os.PathLike[str]) -> TomographyResult:
+        """Read a file written by :meth:`to_npz`."""
+        with np.load(_with_suffix(path), allow_pickle=False) as data:
+            version = int(data["format_version"])
+            if version != FORMAT_VERSION:
+                raise ValueError(f"Unsupported result format version {version} (expected {FORMAT_VERSION}).")
+            evaluation = None
+            if all(key in data for key in _EVAL_KEYS):
+                evaluation = Evaluation(**{attr: data[key] for key, attr in _EVAL_KEYS.items()})
+            return cls(
+                model=str(data["model"]),
+                num_qubits=int(data["num_qubits"]),
+                loss_history=data["loss_history"],
+                training_states=data["training_states"],
+                initial_params=data["initial_params"],
+                params=data["params"],
+                fit_seconds=float(data["fit_seconds"]),
+                evaluation=evaluation,
+                metadata=json.loads(str(data["metadata"])),
+            )
 
 
 def get_value(result: TomographyResult, key: str) -> Any:
